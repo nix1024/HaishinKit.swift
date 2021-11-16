@@ -53,6 +53,16 @@ open class HTTPStream: NetStream {
         }
         super.attachAudio(audio, automaticallyConfiguresApplicationAudioSession: automaticallyConfiguresApplicationAudioSession, onError: onError)
     }
+    
+    open func attachBroadcast(_ screen: CaptureSessionConvertible?, useScreenSize: Bool = true) {
+        if screen == nil {
+            tsWriter.expectedMedias.remove(.video)
+        } else {
+            tsWriter.expectedMedias.insert(.video)
+        }
+        
+        super.attachScreen(screen, useScreenSize: useScreenSize)
+    }
     #endif
 
     func getResource(_ resourceName: String) -> (MIME, String)? {
@@ -63,9 +73,11 @@ open class HTTPStream: NetStream {
         let fileName: String = url.pathComponents.last!
         switch true {
         case fileName == "playlist.m3u8":
+            debugPrint("Playlist: \(tsWriter.playlist)")
             return (.applicationXMpegURL, tsWriter.playlist)
         case fileName.contains(".ts"):
             if let mediaFile: String = tsWriter.getFilePath(fileName) {
+                debugPrint("Video file: \(mediaFile)")
                 return (.videoMP2T, mediaFile)
             }
             return nil

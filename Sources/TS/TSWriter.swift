@@ -332,6 +332,8 @@ class TSFileWriter: TSWriter {
 
         let filename: String = Int(timestamp.seconds).description + ".ts"
         let url = URL(fileURLWithPath: temp + filename)
+        
+        debugPrint("File path: \(url)")
 
         if let currentFileURL: URL = currentFileURL {
             files.append(M3UMediaInfo(url: currentFileURL, duration: duration))

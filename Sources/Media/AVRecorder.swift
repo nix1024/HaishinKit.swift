@@ -14,11 +14,11 @@ public protocol AVRecorderDelegate: AnyObject {
 // MARK: -
 open class AVRecorder: NSObject {
     public static let defaultOutputSettings: [AVMediaType: [String: Any]] = [
-        .audio: [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 0,
-            AVNumberOfChannelsKey: 0
-        ],
+//        .audio: [
+//            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+//            AVSampleRateKey: 0,
+//            AVNumberOfChannelsKey: 0
+//        ],
         .video: [
             AVVideoCodecKey: AVVideoCodecH264,
             AVVideoHeightKey: 0,
