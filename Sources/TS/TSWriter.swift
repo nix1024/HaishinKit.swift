@@ -18,7 +18,7 @@ public class TSWriter: Running {
     public static let defaultVideoPID: UInt16 = 256
     public static let defaultAudioPID: UInt16 = 257
 
-    public static let defaultSegmentDuration: Double = 2
+    public static let defaultSegmentDuration: Double = 1
 
     /// The delegate instance.
     public weak var delegate: TSWriterDelegate?
@@ -279,8 +279,8 @@ extension TSWriter: VideoCodecDelegate {
 }
 
 class TSFileWriter: TSWriter {
-    static let defaultSegmentCount: Int = 3
-    static let defaultSegmentMaxCount: Int = 12
+    static let defaultSegmentCount: Int = 2
+    static let defaultSegmentMaxCount: Int = 4
 
     var segmentMaxCount: Int = TSFileWriter.defaultSegmentMaxCount
     private(set) var files: [M3UMediaInfo] = []
@@ -333,7 +333,7 @@ class TSFileWriter: TSWriter {
         let filename: String = Int(timestamp.seconds).description + ".ts"
         let url = URL(fileURLWithPath: temp + filename)
         
-        debugPrint("File path: \(url)")
+        debugPrint("Write to path: \(url)")
 
         if let currentFileURL: URL = currentFileURL {
             files.append(M3UMediaInfo(url: currentFileURL, duration: duration))

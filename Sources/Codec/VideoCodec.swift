@@ -49,9 +49,9 @@ public final class VideoCodec {
         }
     }
 
-    public static let defaultWidth: Int32 = 480
-    public static let defaultHeight: Int32 = 272
-    public static let defaultBitrate: UInt32 = 160 * 1000
+    public static let defaultWidth: Int32 = 480 * 2
+    public static let defaultHeight: Int32 = 272 * 2
+    public static let defaultBitrate: UInt32 = 640 * 1000
     public static let defaultScalingMode: ScalingMode = .trim
 
     static let defaultAttributes: [NSString: AnyObject] = [
@@ -206,6 +206,8 @@ public final class VideoCodec {
     private var session: VTCompressionSession? {
         get {
             if _session == nil {
+                debugPrint("Init VTCompressionSession with size: \(width) * \(height)")
+                
                 guard VTCompressionSessionCreate(
                     allocator: kCFAllocatorDefault,
                     width: width,

@@ -77,7 +77,7 @@ open class HTTPStream: NetStream {
             return (.applicationXMpegURL, tsWriter.playlist)
         case fileName.contains(".ts"):
             if let mediaFile: String = tsWriter.getFilePath(fileName) {
-                debugPrint("Video file: \(mediaFile)")
+                debugPrint("Response file: \(mediaFile)")
                 return (.videoMP2T, mediaFile)
             }
             return nil
