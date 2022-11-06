@@ -285,7 +285,25 @@ extension AMF0Serializer: AMFSerializer {
      * - seealso: 2.10 ECMA Array Type
      */
     func serialize(_ value: ASArray) -> Self {
-        self
+        writeUInt8(Type.ecmaArray.rawValue)
+        if value.length == 0 {
+            writeBytes(Data([0x00, 0x00, 0x00, 0x00]))
+            return self
+        }
+        writeUInt32(UInt32(value.length))
+        for object in value.data {
+            if let object = object as? ASObject {
+                if let key = object.keys.first {
+                    serializeUTF8(key, false)
+                    
+                    if let value = object[key] {
+                        serialize(value)
+                    }
+                }
+            }
+        }
+        writeBytes(Data([0x00, 0x00, Type.objectEnd.rawValue]))
+        return self
     }
 
     func deserialize() throws -> ASArray {
