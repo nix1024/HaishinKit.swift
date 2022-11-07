@@ -100,6 +100,7 @@ public class HTTPFLVStream {
     private func resetStream() {
         previousTagSize = 0
         firstDecodeTimeStamp = nil
+        videoIO.codec.formatDescription = nil
     }
 }
 
@@ -199,7 +200,14 @@ extension HTTPFLVMuxer: AVCodecDelegate {
     }
     
     func videoCodec(_ codec: VideoCodec, didSet formatDescription: CMFormatDescription?) {
-
+        guard
+            let formatDescription = formatDescription,
+            let avcC = AVCConfigurationRecord.getData(formatDescription) else {
+            return
+        }
+        var buffer = Data([FLVFrameType.key.rawValue << 4 | FLVVideoCodec.avc.rawValue, FLVAVCPacketType.seq.rawValue, 0, 0, 0])
+        buffer.append(avcC)
+        delegate?.muxer(self, didOutputVideo: buffer, withTimestamp: 0)
     }
     
     func videoCodec(_ codec: VideoCodec, didOutput sampleBuffer: CMSampleBuffer) {
