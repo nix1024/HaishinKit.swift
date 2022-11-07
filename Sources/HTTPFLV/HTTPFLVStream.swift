@@ -17,21 +17,25 @@ public class HTTPFLVStream {
     
     public weak var delegate: HTTPFLVStreamDelegate? {
         didSet {
+            resetStream()
             delegate?.stream(self, didOutput: flvHeader + scriptTag)
-            startTimestamp = Date().timeIntervalSince1970
         }
     }
     
     public private(set) var isRunning: Atomic<Bool> = .init(false)
     
     private var muxer = HTTPFLVMuxer()
-    private var videoIO = AVVideoIOUnit()
+    private var videoIO: AVVideoIOUnit = {
+        let videoIO = AVVideoIOUnit()
+        videoIO.codec.maxKeyFrameIntervalDuration = 0.2 // GOP 0.2 seconds
+        return videoIO
+    }()
     private var lockQueue = DispatchQueue(label: "com.haishinkit.HaishinKit.HTTPFLVStream.lock")
     private var serializer: AMFSerializer = AMF0Serializer()
-    private var previousTagSize: UInt64 = 0
-    private var startTimestamp: Double = 0
-    
-    
+
+    private var previousTagSize: UInt32 = 0
+    private var firstDecodeTimeStamp: Double?
+
     public init() {
         muxer.delegate = self
     }
@@ -60,6 +64,7 @@ public class HTTPFLVStream {
     
     private var metaData: ASArray {
         return ASArray(data: [
+            ["duration" : 0],
             ["width" : videoIO.codec.width],
             ["height" :  videoIO.codec.height],
             ["framerate" : videoIO.fps],
@@ -88,8 +93,13 @@ public class HTTPFLVStream {
         ])
         
         let tagData = header + body
-        previousTagSize = UInt64(tagData.count)
+        previousTagSize = UInt32(tagData.count)
         return previousTagSizeData + tagData
+    }
+
+    private func resetStream() {
+        previousTagSize = 0
+        firstDecodeTimeStamp = nil
     }
 }
 
@@ -104,32 +114,28 @@ extension HTTPFLVStream: HTTPFLVMuxerDelegate {
     }
     
     func muxer(_ muxer: HTTPFLVMuxer, didOutputVideo buffer: Data, withTimestamp: Double) {
-        let previousTagSizeData = Data([
-            UInt8(((previousTagSize & 0xFF000000) >> 24) % 0xFF),
-            UInt8(((previousTagSize & 0xFF0000) >> 16) % 0xFF),
-            UInt8(((previousTagSize & 0xFF00) >> 8) % 0xFF),
-            UInt8(previousTagSize & 0xFF),
-        ])
+        var header = Data([0x09])
+
+        let bodySize = UInt32(buffer.count)
+        header.append(bodySize.bigEndian.data[1...3])
+
+        var timestamp: Double = 0
+        if let firstDecodeTimeStamp = firstDecodeTimeStamp {
+            timestamp = withTimestamp - firstDecodeTimeStamp
+        } else {
+            firstDecodeTimeStamp = withTimestamp
+        }
+        let timestampData = UInt32(timestamp).bigEndian.data
+        header.append(timestampData[1...3]) // lower 3 bytes for timestamp
+        header.append(timestampData[0..<1]) // extended timestamp
+
+        header.append(contentsOf: [0x00, 0x00, 0x00])   // stream id, always 0
+
+        let previousTagSizeData = previousTagSize.bigEndian.data
+        let videoTagData = header + buffer
+        self.delegate?.stream(self, didOutput: previousTagSizeData + videoTagData)
         
-        let bodySize = buffer.count
-        
-        let timestamp = Int64(Date().timeIntervalSince1970 - startTimestamp) * 1000
-        let header = Data([
-            0x09,   // video tag
-            UInt8(((bodySize & 0xFF0000) >> 16) % 0xFF),    // data size
-            UInt8(((bodySize & 0xFF00) >> 8) % 0xFF),
-            UInt8(bodySize & 0xFF),
-            UInt8(((timestamp & 0xFF0000) >> 16) % 0xFF),   // timestamp
-            UInt8(((timestamp & 0xFF00) >> 8) % 0xFF),
-            UInt8(timestamp & 0xFF),
-            UInt8(((timestamp & 0xFF000000) >> 24) % 0xFF),
-            0x00, 0x00, 0x00,   // stream id
-        ])
-        
-        let videoData = header + buffer
-        self.delegate?.stream(self, didOutput: previousTagSizeData + videoData)
-        
-        previousTagSize = UInt64(videoData.count)
+        previousTagSize = UInt32(videoTagData.count)
     }
     
     func muxer(_ muxer: HTTPFLVMuxer, videoCodecErrorOccurred error: VideoCodec.Error) {
@@ -198,11 +204,9 @@ extension HTTPFLVMuxer: AVCodecDelegate {
     
     func videoCodec(_ codec: VideoCodec, didOutput sampleBuffer: CMSampleBuffer) {
         let keyframe: Bool = !sampleBuffer.isNotSync
-        var compositionTime: Int32 = 0
-        let presentationTimeStamp: CMTime = sampleBuffer.presentationTimeStamp
-        var decodeTimeStamp: CMTime = sampleBuffer.decodeTimeStamp
-        
-        print("videoTimeStamp: \(videoTimeStamp), presentationTimeStamp: \(presentationTimeStamp), decodeTimeStamp: \(decodeTimeStamp), delta: \((decodeTimeStamp.seconds - videoTimeStamp.seconds) * 1000)")
+        var compositionTime: Int32 = 0  // compositionTime = pts - dts
+        let presentationTimeStamp: CMTime = sampleBuffer.presentationTimeStamp  // ts for display
+        var decodeTimeStamp: CMTime = sampleBuffer.decodeTimeStamp  // ts for decoding, may smaller than pts for P/B frames
         
         if decodeTimeStamp == CMTime.invalid {
             decodeTimeStamp = presentationTimeStamp
@@ -219,7 +223,7 @@ extension HTTPFLVMuxer: AVCodecDelegate {
         ])
         buffer.append(contentsOf: compositionTime.bigEndian.data[1..<4])
         buffer.append(data)
-        delegate?.muxer(self, didOutputVideo: buffer, withTimestamp: delta)
+        delegate?.muxer(self, didOutputVideo: buffer, withTimestamp: presentationTimeStamp.seconds * 1000)
         videoTimeStamp = decodeTimeStamp
         
     }
