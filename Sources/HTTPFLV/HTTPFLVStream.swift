@@ -28,7 +28,6 @@ public class HTTPFLVStream {
     private var serializer: AMFSerializer = AMF0Serializer()
 
     private var previousTagSize: UInt32 = 0
-    private var firstDecodeTimeStamp: Double?   // TODO: is this necessary?
 
     public init() {
         muxer.delegate = self
@@ -92,8 +91,8 @@ public class HTTPFLVStream {
     }
 
     private func resetStream() {
+        print("reset httpflv stream")
         previousTagSize = 0
-        firstDecodeTimeStamp = nil
     }
 }
 
@@ -113,13 +112,7 @@ extension HTTPFLVStream: HTTPFLVMuxerDelegate {
         let bodySize = UInt32(buffer.count)
         header.append(bodySize.bigEndian.data[1...3])
 
-        var timestamp: Double = 0
-        if let firstDecodeTimeStamp = firstDecodeTimeStamp {
-            timestamp = withTimestamp - firstDecodeTimeStamp
-        } else {
-            firstDecodeTimeStamp = withTimestamp
-        }
-        let timestampData = UInt32(timestamp).bigEndian.data
+        let timestampData = UInt32(withTimestamp).bigEndian.data
         header.append(timestampData[1...3]) // lower 3 bytes for timestamp
         header.append(timestampData[0..<1]) // extended timestamp
 
@@ -140,6 +133,8 @@ extension HTTPFLVStream: HTTPFLVMuxerDelegate {
 
 extension HTTPFLVStream: Running {
     public func startRunning() {
+        print("httpflv stream start")
+
         lockQueue.async {
             self.isRunning.mutate { $0 = true }
 
@@ -151,6 +146,8 @@ extension HTTPFLVStream: Running {
     }
 
     public func stopRunning() {
+        print("httpflv stream stop")
+
         lockQueue.async {
             self.videoIO.stopEncoding()
             self.resetStream()

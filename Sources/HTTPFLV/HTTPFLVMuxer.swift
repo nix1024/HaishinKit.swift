@@ -46,6 +46,7 @@ extension HTTPFLVMuxer: AVCodecDelegate {
     }
 
     func videoCodec(_ codec: VideoCodec, didSet formatDescription: CMFormatDescription?) {
+        print("video codec did set formatDescription")
         guard
             let formatDescription = formatDescription,
             let avcC = AVCConfigurationRecord.getData(formatDescription) else {
