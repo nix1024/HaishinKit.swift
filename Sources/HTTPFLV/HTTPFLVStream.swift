@@ -28,6 +28,7 @@ public class HTTPFLVStream {
     private var serializer: AMFSerializer = AMF0Serializer()
 
     private var previousTagSize: UInt32 = 0
+    private var videoCodecDidSetup: Bool = false
 
     public init() {
         muxer.delegate = self
@@ -38,13 +39,28 @@ public class HTTPFLVStream {
         case .audio:
             break
         case .video:
+            setupCodec(sampleBuffer: sampleBuffer)
             videoIO.encodeSampleBuffer(sampleBuffer)
         default:
             break
         }
     }
+
+    private func setupCodec(sampleBuffer: CMSampleBuffer) {
+        if videoCodecDidSetup {
+            if let width = sampleBuffer.imageBuffer?.width,
+               let height = sampleBuffer.imageBuffer?.height {
+                videoIO.codec.width = Int32(width)
+                videoIO.codec.height = Int32(height)
+                videoIO.codec.bitrate = 640 * 1000
+
+                print("setup video codec: \(width)*\(height)@\(videoIO.codec.bitrate)")
+                videoCodecDidSetup = true
+            }
+        }
+    }
     
-    public var flvHeader: Data {
+    private var flvHeader: Data {
         return Data([
             0x46,   // F
             0x4C,   // L
@@ -92,6 +108,7 @@ public class HTTPFLVStream {
 
     private func resetStream() {
         print("reset httpflv stream")
+        
         previousTagSize = 0
     }
 }
