@@ -15,13 +15,7 @@ public protocol HTTPFLVStreamDelegate: AnyObject {
 
 public class HTTPFLVStream {
     
-    public weak var delegate: HTTPFLVStreamDelegate? {
-        didSet {
-            resetStream()
-            delegate?.stream(self, didOutput: flvHeader + scriptTag)
-        }
-    }
-    
+    public weak var delegate: HTTPFLVStreamDelegate?
     public private(set) var isRunning: Atomic<Bool> = .init(false)
     
     private var muxer = HTTPFLVMuxer()
@@ -100,7 +94,6 @@ public class HTTPFLVStream {
     private func resetStream() {
         previousTagSize = 0
         firstDecodeTimeStamp = nil
-        videoIO.codec.formatDescription = nil
     }
 }
 
@@ -149,13 +142,20 @@ extension HTTPFLVStream: Running {
     public func startRunning() {
         lockQueue.async {
             self.isRunning.mutate { $0 = true }
+
             self.videoIO.startEncoding(self.muxer)
+            self.resetStream()
+            self.delegate?.stream(self, didOutput: self.flvHeader + self.scriptTag)
+            self.muxer.videoCodec(self.videoIO.codec, didSet: self.videoIO.codec.formatDescription)
         }
     }
 
     public func stopRunning() {
         lockQueue.async {
             self.videoIO.stopEncoding()
+            self.resetStream()
+
+            self.isRunning.mutate { $0 = false }
         }
     }
 }
