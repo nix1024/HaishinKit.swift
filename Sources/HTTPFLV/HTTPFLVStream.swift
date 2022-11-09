@@ -54,7 +54,7 @@ public class HTTPFLVStream {
                let height = sampleBuffer.imageBuffer?.height {
                 videoIO.codec.width = Int32(width)
                 videoIO.codec.height = Int32(height)
-                videoIO.codec.bitrate = 1280 * 1000
+                videoIO.codec.bitrate = 0
                 videoIO.codec.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String
 
                 print("setup video codec: \(width)*\(height)@\(videoIO.codec.bitrate)")
