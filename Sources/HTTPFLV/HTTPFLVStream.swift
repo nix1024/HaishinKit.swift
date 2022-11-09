@@ -6,10 +6,12 @@
 //
 
 import AVFoundation
+import VideoToolbox
 
 public protocol HTTPFLVStreamDelegate: AnyObject {
     
     func stream(_ stream: HTTPFLVStream, didOutput data: Data)
+    func stream(_ stream: HTTPFLVStream, didUpdateSize size: CGSize)
     
 }
 
@@ -47,19 +49,22 @@ public class HTTPFLVStream {
     }
 
     private func setupCodec(sampleBuffer: CMSampleBuffer) {
-        if videoCodecDidSetup {
+        if !videoCodecDidSetup {
             if let width = sampleBuffer.imageBuffer?.width,
                let height = sampleBuffer.imageBuffer?.height {
                 videoIO.codec.width = Int32(width)
                 videoIO.codec.height = Int32(height)
-                videoIO.codec.bitrate = 640 * 1000
+                videoIO.codec.bitrate = 1280 * 1000
+                videoIO.codec.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String
 
                 print("setup video codec: \(width)*\(height)@\(videoIO.codec.bitrate)")
                 videoCodecDidSetup = true
+                
+                delegate?.stream(self, didUpdateSize: CGSize(width: CGFloat(width), height: CGFloat(height)))
             }
         }
     }
-    
+        
     private var flvHeader: Data {
         return Data([
             0x46,   // F

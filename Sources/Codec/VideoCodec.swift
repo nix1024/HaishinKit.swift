@@ -252,6 +252,7 @@ public class VideoCodec {
             return
         }
         if invalidateSession {
+            invalidateSession = false
             session = VTSessionMode.compression.makeSession(self)
         }
         session?.inputBuffer(
