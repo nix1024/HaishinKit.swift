@@ -15,15 +15,47 @@ public protocol HTTPFLVStreamDelegate: AnyObject {
     
 }
 
+public enum StreamQuality {
+    case normal
+    case medium
+    case high
+    case max
+}
+
+extension StreamQuality {
+    var bitrate: UInt32 {
+        switch self {
+        case .normal:
+            return 320 * 1000
+        case .medium:
+            return 640 * 1000
+        case .high:
+            return 1280 * 1000
+        case .max:
+            return 0
+        }
+    }
+}
+
 public class HTTPFLVStream {
     
     public weak var delegate: HTTPFLVStreamDelegate?
     public private(set) var isRunning: Atomic<Bool> = .init(false)
+    public var quality: StreamQuality = .normal {
+        didSet {
+            if quality != oldValue {
+                print("set bitrate: \(quality.bitrate)")
+                videoIO.codec.bitrate = quality.bitrate
+            }
+        }
+    }
     
     private var muxer = HTTPFLVMuxer()
     private var videoIO: AVVideoIOUnit = {
         let videoIO = AVVideoIOUnit()
         videoIO.codec.maxKeyFrameIntervalDuration = 0.2 // GOP 0.2 seconds
+        videoIO.codec.bitrate = StreamQuality.normal.bitrate
+        videoIO.codec.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String
         return videoIO
     }()
     private var lockQueue = DispatchQueue(label: "com.haishinkit.HaishinKit.HTTPFLVStream.lock")
@@ -54,9 +86,6 @@ public class HTTPFLVStream {
                let height = sampleBuffer.imageBuffer?.height {
                 videoIO.codec.width = Int32(width)
                 videoIO.codec.height = Int32(height)
-                videoIO.codec.bitrate = 0
-                videoIO.codec.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String
-
                 print("setup video codec: \(width)*\(height)@\(videoIO.codec.bitrate)")
                 videoCodecDidSetup = true
                 
