@@ -11,7 +11,6 @@ import VideoToolbox
 public protocol HTTPFLVStreamDelegate: AnyObject {
     
     func stream(_ stream: HTTPFLVStream, didOutput data: Data)
-    func stream(_ stream: HTTPFLVStream, didUpdateSize size: CGSize)
     
 }
 
@@ -88,8 +87,6 @@ public class HTTPFLVStream {
                 videoIO.codec.height = Int32(height)
                 print("setup video codec: \(width)*\(height)@\(videoIO.codec.bitrate)")
                 videoCodecDidSetup = true
-                
-                delegate?.stream(self, didUpdateSize: CGSize(width: CGFloat(width), height: CGFloat(height)))
             }
         }
     }
