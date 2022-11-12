@@ -25,13 +25,13 @@ extension StreamQuality {
     var bitrate: UInt32 {
         switch self {
         case .normal:
-            return 320 * 1000
+            return 128 * 1024 * 8
         case .medium:
-            return 640 * 1000
+            return 256 * 1024 * 8
         case .high:
-            return 1280 * 1000
+            return 512 * 1024 * 8
         case .max:
-            return 0
+            return 1024 * 1024 * 8
         }
     }
 }
