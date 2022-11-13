@@ -62,6 +62,8 @@ public class HTTPFLVStream {
 
     private var previousTagSize: UInt32 = 0
     private var videoCodecDidSetup: Bool = false
+    
+    private var formatDescriptionDidSend = false
 
     public init() {
         muxer.delegate = self
@@ -141,6 +143,8 @@ public class HTTPFLVStream {
         print("reset httpflv stream")
         
         previousTagSize = 0
+        formatDescriptionDidSend = false
+        videoIO.codec.formatDescription = nil   // make sure didOutputVideoFormatDescription will get called
     }
 }
 
@@ -154,23 +158,37 @@ extension HTTPFLVStream: HTTPFLVMuxerDelegate {
         
     }
     
-    func muxer(_ muxer: HTTPFLVMuxer, didOutputVideo buffer: Data, withTimestamp: Double) {
+    private func videoHeader(bodySize: Int, timestamp: Double) -> Data {
         var header = Data([0x09])
+        header.append(UInt32(bodySize).bigEndian.data[1...3])
 
-        let bodySize = UInt32(buffer.count)
-        header.append(bodySize.bigEndian.data[1...3])
-
-        let timestampData = UInt32(withTimestamp).bigEndian.data
+        let timestampData = UInt32(timestamp).bigEndian.data
         header.append(timestampData[1...3]) // lower 3 bytes for timestamp
         header.append(timestampData[0..<1]) // extended timestamp
 
         header.append(contentsOf: [0x00, 0x00, 0x00])   // stream id, always 0
-
+        return header
+    }
+    
+    private func sendVideoBuffer(buffer: Data, timestamp: Double) {
+        let header = videoHeader(bodySize: buffer.count, timestamp: timestamp)
         let previousTagSizeData = previousTagSize.bigEndian.data
         let videoTagData = header + buffer
+        
         self.delegate?.stream(self, didOutput: previousTagSizeData + videoTagData)
         
         previousTagSize = UInt32(videoTagData.count)
+    }
+    
+    func muxer(_ muxer: HTTPFLVMuxer, didOutputVideoFormatDescription buffer: Data, withTimestamp: Double) {
+        sendVideoBuffer(buffer: buffer, timestamp: withTimestamp)
+        formatDescriptionDidSend = true
+    }
+    
+    func muxer(_ muxer: HTTPFLVMuxer, didOutputVideo buffer: Data, withTimestamp: Double) {
+        if formatDescriptionDidSend {
+            sendVideoBuffer(buffer: buffer, timestamp: withTimestamp)
+        }
     }
     
     func muxer(_ muxer: HTTPFLVMuxer, videoCodecErrorOccurred error: VideoCodec.Error) {
@@ -186,10 +204,10 @@ extension HTTPFLVStream: Running {
         lockQueue.async {
             self.isRunning.mutate { $0 = true }
 
-            self.videoIO.startEncoding(self.muxer)
             self.resetStream()
+            
+            self.videoIO.startEncoding(self.muxer)
             self.delegate?.stream(self, didOutput: self.flvHeader + self.scriptTag)
-            self.muxer.videoCodec(self.videoIO.codec, didSet: self.videoIO.codec.formatDescription)
         }
     }
 

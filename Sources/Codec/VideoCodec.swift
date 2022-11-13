@@ -251,7 +251,7 @@ public class VideoCodec {
         guard isRunning.value && locked == 0 else {
             return
         }
-        if invalidateSession {
+        if invalidateSession || session == nil {
             invalidateSession = false
             session = VTSessionMode.compression.makeSession(self)
         }

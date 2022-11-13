@@ -13,6 +13,8 @@ protocol HTTPFLVMuxerDelegate: AnyObject {
 
     func muxer(_ muxer: HTTPFLVMuxer, didOutputAudio buffer: Data, withTimestamp: Double)
 
+    func muxer(_ muxer: HTTPFLVMuxer, didOutputVideoFormatDescription buffer: Data, withTimestamp: Double)
+    
     func muxer(_ muxer: HTTPFLVMuxer, didOutputVideo buffer: Data, withTimestamp: Double)
 
     func muxer(_ muxer: HTTPFLVMuxer, videoCodecErrorOccurred error: VideoCodec.Error)
@@ -46,15 +48,17 @@ extension HTTPFLVMuxer: AVCodecDelegate {
     }
 
     func videoCodec(_ codec: VideoCodec, didSet formatDescription: CMFormatDescription?) {
-        print("video codec did set formatDescription")
         guard
             let formatDescription = formatDescription,
             let avcC = AVCConfigurationRecord.getData(formatDescription) else {
             return
         }
+        
+        print("video codec did set formatDescription")
+        
         var buffer = Data([FLVFrameType.key.rawValue << 4 | FLVVideoCodec.avc.rawValue, FLVAVCPacketType.seq.rawValue, 0, 0, 0])
         buffer.append(avcC)
-        delegate?.muxer(self, didOutputVideo: buffer, withTimestamp: 0)
+        delegate?.muxer(self, didOutputVideoFormatDescription: buffer, withTimestamp: 0)
     }
 
     func videoCodec(_ codec: VideoCodec, didOutput sampleBuffer: CMSampleBuffer) {
