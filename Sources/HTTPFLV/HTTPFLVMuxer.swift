@@ -9,8 +9,6 @@ import AVFoundation
 
 protocol HTTPFLVMuxerDelegate: AnyObject {
 
-    func muxer(_ muxer: HTTPFLVMuxer, didSetMetadata: ASObject)
-
     func muxer(_ muxer: HTTPFLVMuxer, didOutputAudio buffer: Data, withTimestamp: Double)
 
     func muxer(_ muxer: HTTPFLVMuxer, didOutputVideoFormatDescription buffer: Data, withTimestamp: Double)

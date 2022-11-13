@@ -150,10 +150,6 @@ public class HTTPFLVStream {
 
 extension HTTPFLVStream: HTTPFLVMuxerDelegate {
     
-    func muxer(_ muxer: HTTPFLVMuxer, didSetMetadata: ASObject) {
-        print("muxer didSetMetadata: \(didSetMetadata)")
-    }
-    
     func muxer(_ muxer: HTTPFLVMuxer, didOutputAudio buffer: Data, withTimestamp: Double) {
         
     }
@@ -181,11 +177,15 @@ extension HTTPFLVStream: HTTPFLVMuxerDelegate {
     }
     
     func muxer(_ muxer: HTTPFLVMuxer, didOutputVideoFormatDescription buffer: Data, withTimestamp: Double) {
+        
+        // Send Video config tag
         sendVideoBuffer(buffer: buffer, timestamp: withTimestamp)
         formatDescriptionDidSend = true
     }
     
     func muxer(_ muxer: HTTPFLVMuxer, didOutputVideo buffer: Data, withTimestamp: Double) {
+        
+        // Send video tag
         if formatDescriptionDidSend {
             sendVideoBuffer(buffer: buffer, timestamp: withTimestamp)
         }
@@ -198,6 +198,8 @@ extension HTTPFLVStream: HTTPFLVMuxerDelegate {
 }
 
 extension HTTPFLVStream: Running {
+    
+    // FLV header > Script tag(onMetaData) > Video config tag > Video tag
     public func startRunning() {
         print("httpflv stream start")
 
